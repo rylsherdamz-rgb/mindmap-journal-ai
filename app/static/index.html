@@ -1,3 +1,315 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>MindMap Journal</title></head>
-<body><h1>MindMap Journal</h1><p>Frontend coming next.</p></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MindMap Journal 🧠</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1220; --panel: #191d31; --panel2: #222741; --text: #e8eaf2; --muted: #9aa0bd; --accent: #7c5cff; --accent2: #4dd0e1;
+      --joy:#ffca3a; --sadness:#4d8cff; --love:#ff5c8a; --anger:#ff6b3d; --fear:#9b6bff; --surprise:#3ddc97;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: 'Inter', system-ui, sans-serif; background: var(--bg);
+      color: var(--text); line-height: 1.5;
+    }
+    header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 16px 24px; border-bottom: 1px solid #262b45; position: sticky; top:0;
+      background: rgba(15,18,32,.85); backdrop-filter: blur(8px); z-index: 5;
+    }
+    .brand { font-weight:700; font-size: 1.25rem; }
+    .brand small { color: var(--muted); font-weight:500; font-size:.7rem; display:block; }
+    button {
+      font-family: inherit; cursor: pointer; border: none; border-radius: 10px;
+      padding: 10px 16px; font-weight: 600; font-size: .95rem; transition: .15s;
+    }
+    button:disabled { opacity:.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover:not(:disabled) { background:#6a49f2; }
+    .btn-ghost { background: transparent; color: var(--muted); border:1px solid #333a5c; }
+    .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--panel); border:1px solid #262b45; border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+    h2 { margin: 0 0 12px; font-size: 1.1rem; }
+    textarea {
+      width:100%; min-height: 120px; resize: vertical; background: var(--panel2);
+      color: var(--text); border:1px solid #333a5c; border-radius: 12px; padding: 14px;
+      font-family: inherit; font-size: 1rem;
+    }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap: wrap; }
+    .spacer { flex:1; }
+    .tag {
+      display:inline-flex; align-items:center; gap:6px; padding: 4px 12px; border-radius: 999px;
+      font-weight:600; font-size:.85rem; color:#12142a;
+    }
+    .muted { color: var(--muted); }
+    .reflection { background: linear-gradient(135deg,#232a4d,#1c2038); border-left:3px solid var(--accent2); padding:14px 16px; border-radius:12px; margin-top:12px; }
+    .hero { text-align:center; padding: 60px 20px; }
+    .hero h1 { font-size: 2.4rem; margin: 0 0 8px; }
+    .hidden { display:none !important; }
+    .entry { border-bottom:1px solid #262b45; padding: 14px 0; }
+    .entry:last-child { border-bottom:none; }
+    .entry .meta { font-size:.8rem; color:var(--muted); margin-top:6px; }
+    #banner { position: fixed; bottom: 20px; left:50%; transform: translateX(-50%);
+      background:#3a1d2b; color:#ffb4c6; border:1px solid #7a2c46; padding:12px 18px;
+      border-radius:12px; display:none; z-index: 10; align-items:center; gap:12px; }
+    canvas { max-height: 260px; }
+    .avatar { width:32px; height:32px; border-radius:50%; }
+    .stat { text-align:center; padding: 8px 16px; }
+    .stat .n { font-size:1.6rem; font-weight:700; }
+    .stat .l { font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">MindMap Journal 🧠<small>self-trained emotion AI · #AccelerateAIwithCloudRun</small></div>
+    <div class="row" id="userArea">
+      <span id="userName" class="muted"></span>
+      <img id="userPhoto" class="avatar hidden" alt="" />
+      <button id="signOutBtn" class="btn-ghost hidden">Sign out</button>
+    </div>
+  </header>
+
+  <!-- Signed-out hero -->
+  <section id="landing" class="hero">
+    <h1>Journal that <em>understands</em> you.</h1>
+    <p class="muted">Every entry is analysed by a machine-learning emotion model I trained myself,
+      then reflected on by Gemini. Watch your mood patterns emerge over time.</p>
+    <br />
+    <button id="signInBtn" class="btn-primary">Sign in with Google</button>
+    <p class="muted" style="margin-top:24px;font-size:.85rem">Your entries are private and isolated to your account.</p>
+  </section>
+
+  <!-- Signed-in app -->
+  <main id="app" class="container hidden">
+    <div class="card">
+      <h2>How are you feeling?</h2>
+      <textarea id="entryText" placeholder="Write whatever's on your mind…"></textarea>
+      <div class="row" style="margin-top:12px">
+        <button id="analyzeBtn" class="btn-primary">Analyze &amp; Save</button>
+        <span id="analyzeStatus" class="muted"></span>
+        <div class="spacer"></div>
+        <span id="emotionTag"></span>
+      </div>
+      <div id="reflectionBox" class="reflection hidden"></div>
+    </div>
+
+    <div class="card">
+      <h2>Your mood over time</h2>
+      <div class="row" style="justify-content:space-around;margin-bottom:12px">
+        <div class="stat"><div class="n" id="statCount">0</div><div class="l">Entries</div></div>
+        <div class="stat"><div class="n" id="statTop">—</div><div class="l">Most common</div></div>
+        <div class="stat"><div class="n" id="statStreak">0</div><div class="l">Days tracked</div></div>
+      </div>
+      <canvas id="moodChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Past entries</h2>
+      <div id="entryList"><p class="muted">No entries yet — write your first one above.</p></div>
+    </div>
+  </main>
+
+  <div id="banner"><span id="bannerMsg"></span><button id="bannerRetry" class="btn-ghost" style="padding:4px 10px">Retry</button></div>
+
+  <!-- Firebase + Chart.js -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    // -----------------------------------------------------------------------
+    // Firebase web config. These values are NOT secret (they identify your
+    // Firebase project client-side). Replace the placeholders with the config
+    // from Firebase console → Project settings → Your apps → Web app.
+    // -----------------------------------------------------------------------
+    const firebaseConfig = {
+      apiKey: "REPLACE_WITH_FIREBASE_WEB_API_KEY",
+      authDomain: "REPLACE_WITH_PROJECT.firebaseapp.com",
+      projectId: "REPLACE_WITH_PROJECT_ID",
+      appId: "REPLACE_WITH_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const EMOTION_COLORS = {
+      joy: "#ffca3a", sadness: "#4d8cff", love: "#ff5c8a",
+      anger: "#ff6b3d", fear: "#9b6bff", surprise: "#3ddc97"
+    };
+    const EMOTION_SCORE = { joy: 2, love: 1, surprise: 0, fear: -1, anger: -1.5, sadness: -2 };
+    const EMOJI = { joy:"😊", sadness:"😢", love:"❤️", anger:"😠", fear:"😨", surprise:"😲" };
+
+    let idToken = null;
+    let chart = null;
+
+    // ---- DOM helpers ----
+    const $ = (id) => document.getElementById(id);
+    function showBanner(msg, onRetry) {
+      $("bannerMsg").textContent = msg;
+      const b = $("banner"); b.style.display = "flex";
+      const r = $("bannerRetry");
+      r.onclick = () => { b.style.display = "none"; if (onRetry) onRetry(); };
+    }
+    function hideBanner(){ $("banner").style.display = "none"; }
+
+    async function authedFetch(path, opts = {}) {
+      const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+      if (idToken) headers["Authorization"] = "Bearer " + idToken;
+      const res = await fetch(path, Object.assign({}, opts, { headers }));
+      if (!res.ok) {
+        const detail = await res.text().catch(() => res.statusText);
+        throw new Error(`${res.status}: ${detail}`);
+      }
+      return res.json();
+    }
+
+    // ---- Auth flow ----
+    $("signInBtn").onclick = () => signInWithPopup(auth, provider).catch(e => showBanner("Sign-in failed: " + e.message));
+    $("signOutBtn").onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        idToken = await user.getIdToken();
+        $("landing").classList.add("hidden");
+        $("app").classList.remove("hidden");
+        $("signOutBtn").classList.remove("hidden");
+        $("userName").textContent = user.displayName || user.email || "";
+        if (user.photoURL) { $("userPhoto").src = user.photoURL; $("userPhoto").classList.remove("hidden"); }
+        loadEntries();
+      } else {
+        idToken = null;
+        $("landing").classList.remove("hidden");
+        $("app").classList.add("hidden");
+        $("signOutBtn").classList.add("hidden");
+        $("userPhoto").classList.add("hidden");
+        $("userName").textContent = "";
+      }
+    });
+
+    // ---- Analyze & save ----
+    $("analyzeBtn").onclick = analyzeAndSave;
+    async function analyzeAndSave() {
+      const text = $("entryText").value.trim();
+      if (!text) return;
+      const btn = $("analyzeBtn");
+      btn.disabled = true; $("analyzeStatus").textContent = "Analyzing emotion…"; hideBanner();
+      try {
+        // 1) self-trained ML model classifies the emotion
+        const pred = await authedFetch("/predict", { method:"POST", body: JSON.stringify({ text }) });
+        renderTag(pred.emotion, pred.confidence);
+
+        // 2) Gemini reflection (with server-side fallback ladder)
+        $("analyzeStatus").textContent = "Reflecting…";
+        const refl = await authedFetch("/reflect", { method:"POST", body: JSON.stringify({ text, emotion: pred.emotion }) });
+        const box = $("reflectionBox");
+        box.classList.remove("hidden");
+        box.innerHTML = `<strong>Reflection</strong> <span class="muted">(${refl.model})</span><br/>${escapeHtml(refl.reflection)}`;
+
+        // 3) persist to the user's private Firestore collection
+        $("analyzeStatus").textContent = "Saving…";
+        await authedFetch("/entries", { method:"POST", body: JSON.stringify({
+          text, emotion: pred.emotion, confidence: pred.confidence,
+          scores: pred.scores, reflection: refl.reflection, reflection_model: refl.model
+        })});
+
+        $("analyzeStatus").textContent = "Saved ✓";
+        $("entryText").value = "";
+        loadEntries();
+      } catch (e) {
+        // Never clear the buffer on failure; offer retry.
+        $("analyzeStatus").textContent = "";
+        showBanner("Something went wrong: " + e.message, analyzeAndSave);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function renderTag(emotion, confidence) {
+      const el = $("emotionTag");
+      const color = EMOTION_COLORS[emotion] || "#888";
+      el.innerHTML = `<span class="tag" style="background:${color}">${EMOJI[emotion]||""} ${emotion} · ${(confidence*100).toFixed(0)}%</span>`;
+    }
+
+    // ---- Load + render entries ----
+    async function loadEntries() {
+      try {
+        const data = await authedFetch("/entries");
+        renderEntries(data.entries || []);
+      } catch (e) {
+        showBanner("Couldn't load your entries: " + e.message, loadEntries);
+      }
+    }
+
+    function renderEntries(entries) {
+      $("statCount").textContent = entries.length;
+      const counts = {};
+      entries.forEach(e => { if (e.emotion) counts[e.emotion] = (counts[e.emotion]||0)+1; });
+      const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+      $("statTop").textContent = top ? (EMOJI[top[0]]||"") + " " + top[0] : "—";
+      const days = new Set(entries.map(e => (e.created_at||"").slice(0,10))).size;
+      $("statStreak").textContent = days;
+
+      // list
+      const list = $("entryList");
+      if (!entries.length) { list.innerHTML = '<p class="muted">No entries yet — write your first one above.</p>'; }
+      else {
+        list.innerHTML = entries.map(e => `
+          <div class="entry">
+            <div>${escapeHtml(e.text)}</div>
+            <div class="meta">
+              <span class="tag" style="background:${EMOTION_COLORS[e.emotion]||'#888'}">${EMOJI[e.emotion]||""} ${e.emotion||"?"}</span>
+              · ${formatDate(e.created_at)}
+              ${e.reflection ? `<br/><em class="muted">💬 ${escapeHtml(e.reflection)}</em>` : ""}
+            </div>
+          </div>`).join("");
+      }
+      renderChart(entries);
+    }
+
+    function renderChart(entries) {
+      const ordered = [...entries].reverse(); // oldest -> newest
+      const labels = ordered.map(e => formatDate(e.created_at, true));
+      const points = ordered.map(e => EMOTION_SCORE[e.emotion] ?? 0);
+      const colors = ordered.map(e => EMOTION_COLORS[e.emotion] || "#888");
+      const ctx = $("moodChart").getContext("2d");
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "line",
+        data: { labels, datasets: [{
+          label: "Mood", data: points, tension: .35,
+          borderColor: "#7c5cff", pointBackgroundColor: colors,
+          pointRadius: 5, fill: false
+        }]},
+        options: {
+          plugins: { legend: { display:false },
+            tooltip: { callbacks: { label: (c) => ordered[c.dataIndex].emotion } } },
+          scales: {
+            y: { min:-2.2, max:2.2, ticks: { callback: v =>
+              ({ "2":"joy","1":"love","0":"neutral","-1":"fear/anger","-2":"sadness" }[v] || "") },
+              grid: { color:"#262b45" } },
+            x: { grid: { color:"#1c2038" } }
+          }
+        }
+      });
+    }
+
+    // ---- utils ----
+    function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, c => (
+      {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+    function formatDate(iso, short){
+      if(!iso) return "";
+      const d = new Date(iso);
+      return short ? d.toLocaleDateString(undefined,{month:"short",day:"numeric"})
+                   : d.toLocaleString();
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</body>
+</html>

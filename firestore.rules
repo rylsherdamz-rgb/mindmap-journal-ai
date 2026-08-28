@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// MindMap Journal — user-isolated Firestore security rules.
+//
+// Security posture (defence in depth alongside backend JWT verification):
+//   * Zero insecure defaults: there is no `allow read, write: if true;` anywhere.
+//   * Every document is owner-bound: a user may only touch paths under their own uid.
+//   * All access requires an authenticated request (request.auth != null).
+//
+// Data model:
+//   users/{userId}/entries/{entryId}
+//
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A user's own profile/root document (optional metadata).
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Journal entries live under each user and are strictly owner-scoped.
+      match /entries/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Explicit deny for anything not matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
