@@ -1,0 +1,16 @@
+# --- Web / API runtime (Cloud Run) ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+python-multipart==0.0.20
+
+# --- ML model (training + inference) ---
+scikit-learn==1.6.0
+joblib==1.4.2
+numpy==2.2.1
+scipy==1.15.0
+
+# --- Google Cloud / Firebase / Gemini ---
+google-cloud-secret-manager==2.22.0
+firebase-admin==6.6.0
+google-genai==0.5.0
