@@ -5,10 +5,12 @@ pydantic==2.10.4
 python-multipart==0.0.20
 
 # --- ML model (training + inference) ---
-scikit-learn==1.6.0
-joblib==1.4.2
-numpy==2.2.1
-scipy==1.15.0
+# Pinned to the exact versions used to train model/emotion_model.joblib so the
+# serialized pipeline loads without scikit-learn InconsistentVersionWarning / errors.
+scikit-learn==1.9.0
+joblib==1.5.3
+numpy==2.5.2
+scipy==1.18.1
 
 # --- Dataset loading for training (ml/train.py) ---
 pandas==2.2.3
