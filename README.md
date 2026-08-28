@@ -134,6 +134,11 @@ python ml/train.py          # downloads data → trains → evaluates → saves 
 
 # 🚀 Deploy to Google Cloud Run
 
+> **One-command deploy:** after `gcloud auth login`, run
+> `PROJECT_ID=your-project GEMINI_API_KEY=your-key ./deploy.sh`. The script enables APIs,
+> stores the secret, grants IAM, deploys, and applies the challenge label for you. The manual
+> steps below explain exactly what it does.
+
 > **Cost:** New Google Cloud accounts get **$300 in free credits**. Cloud Run, Firestore, and
 > the Gemini API all have generous free tiers — a demo like this typically costs **$0**.
 
@@ -275,6 +280,17 @@ Or with Docker:
 ```bash
 docker build -t mindmap-journal .
 docker run -p 8080:8080 -e GEMINI_API_KEY="your-key" mindmap-journal
+```
+
+## ✅ Testing
+
+An automated test suite (`tests/test_app.py`) covers the ML model, all public endpoints,
+input validation, and auth enforcement — no cloud credentials required (the Gemini and
+Firestore paths degrade gracefully, which the tests assert):
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q          # 14 tests
 ```
 
 ## 🛡️ Security notes
