@@ -4,67 +4,82 @@
 emotion model I trained myself, not just an off-the-shelf chatbot.**
 
 Built for the [Cloud Run "Accelerate AI" Challenge](https://codelabs.developers.google.com/codelabs/cloud-run/cloud-run-ai-challenge)
-(`#AccelerateAIwithCloudRun`).
+· `#AccelerateAIwithCloudRun`
 
 ---
 
 ## 📖 What is this?
 
 Most journaling apps in this challenge are a thin wrapper around a large language model: you
-type something, the LLM replies, and the text is saved. **MindMap Journal goes further.**
+type, the LLM replies, the text is saved. **MindMap Journal goes further.**
 
-Every time you write an entry, the app runs it through a **custom emotion classifier that I
-trained from scratch** on a real, public dataset. That model reads your words and tags the
-dominant emotion — *joy, sadness, anger, fear, love,* or *surprise* — with a confidence
-score. Gemini then reads the same entry and writes a warm, reflective response. Over time,
-the app assembles your tagged entries into a **mood-over-time dashboard** so you can actually
-*see* your emotional patterns emerge.
+Every entry runs through a **custom emotion classifier I trained from scratch** on a real,
+public dataset. That model tags the dominant emotion — *joy, sadness, anger, fear, love,* or
+*surprise* — with a confidence score. **Gemini** then reads the same entry and writes a warm,
+reflective response. Over time, your tagged entries build a **mood-over-time dashboard** so
+you can *see* your emotional patterns emerge.
 
-The result is a journal that does three distinct jobs at once:
+Three jobs at once:
 
-1. **Classifies** your emotion with a purpose-built ML model (this is the part I trained).
+1. **Classifies** your emotion with a purpose-built ML model *(the part I trained)*.
 2. **Reflects** on your entry with Gemini's natural-language understanding.
 3. **Remembers** everything privately, so patterns surface across days and weeks.
 
-## 🌟 Why this stands out (Authenticity)
+## 🌟 How it scores on the judging axes
 
-The challenge is judged on **Authenticity, Usability, Stability, and Security**. This project
-was designed to score on all four:
-
-| Judging axis | How MindMap Journal addresses it |
+| Axis | How MindMap Journal addresses it |
 | :--- | :--- |
-| **Authenticity** | A **self-trained scikit-learn emotion model** — real ML, not a Gemini wrapper. The training pipeline, dataset, and evaluation metrics are all in this repo and reproducible. |
-| **Usability** | One-click **Google Sign-In**, a single clean dashboard, instant emotion tags, and a visual mood chart. |
-| **Stability** | A **Gemini model-fallback ladder** (retries across models on 429/503/500 errors) and defensive, null-safe request handling so the UI never crashes silently. |
-| **Security** | **User-isolated Firestore rules** (`request.auth.uid == userId`), the Gemini key stored in **Secret Manager** (zero hardcoded secrets), and backend JWT verification via the Firebase Admin SDK. |
+| **Authenticity** | A **self-trained scikit-learn emotion model** — real ML, reproducible from `ml/train.py`, with documented metrics. Not a Gemini wrapper. |
+| **Usability** | One-click **Google Sign-In**, a single clean dashboard, instant emotion tags, and a live mood chart. |
+| **Stability** | A **Gemini model-fallback ladder** (retries across models on 429/503/500/404) plus a deterministic local fallback, defensive input validation, and an error banner with **Retry** so nothing fails silently. |
+| **Security** | **User-isolated Firestore rules** (`request.auth.uid == userId`, zero insecure defaults), the Gemini key in **Secret Manager** (no hardcoded secrets), and backend **JWT verification** via the Firebase Admin SDK. |
 
 ## ✨ Features
 
-- 🔐 **Google Sign-In** via Firebase Authentication — no passwords are ever stored.
+- 🔐 **Google Sign-In** via Firebase Authentication — no passwords stored.
 - 🤖 **Self-trained ML emotion classifier** auto-tags every entry (`POST /predict`).
 - 💬 **Gemini reflection** with a resilient multi-model fallback ladder (`POST /reflect`).
-- 📊 **Mood-over-time dashboard** built live from your accumulated, tagged entries.
-- 🔒 **Strict per-user data isolation** — you can only ever read or write your own entries.
-- 🗝️ **Secret Manager** integration for the Gemini API key (no secrets in code or images).
+- 📊 **Mood-over-time dashboard** built live from your accumulated entries.
+- 🔒 **Strict per-user data isolation** — you can only read/write your own entries.
+- 🗝️ **Secret Manager** integration for the Gemini API key.
 - ☁️ **Single-container deploy** to Google Cloud Run.
 
 ## 🧠 The machine learning model
 
-This is the heart of the project — a genuine, reproducible ML pipeline.
-
 - **Task:** multi-class text emotion classification (6 classes).
 - **Dataset:** [`dair-ai/emotion`](https://huggingface.co/datasets/dair-ai/emotion) — ~20,000
-  English messages labeled with one of six emotions (sadness, joy, love, anger, fear,
-  surprise). A widely used, publicly available benchmark.
-- **Approach:** a **TF-IDF vectorizer + Logistic Regression** classifier (scikit-learn).
-  This baseline is fast to train (seconds), tiny to ship, and cheap to serve on Cloud Run's
-  free tier — while still reaching strong accuracy on this dataset. The pipeline is
-  structured so the classifier can later be swapped for a fine-tuned transformer without
-  touching the API layer.
-- **Artifact:** the trained pipeline is serialized with `joblib` and loaded once at server
+  labeled English messages (sadness, joy, love, anger, fear, surprise).
+- **Approach:** **TF-IDF (1–2 grams) + Logistic Regression** with balanced class weights
+  (scikit-learn `Pipeline`). Fast to train (~19s), tiny to ship (<1 MB), cheap to serve on
+  Cloud Run's free tier. The pipeline is structured so the classifier can later be swapped
+  for a fine-tuned transformer without touching the API layer.
+- **Artifact:** serialized with `joblib` to `model/emotion_model.joblib`, loaded once at
   startup for low-latency inference.
-- **Reproducibility:** run `python ml/train.py` to download the data, train, evaluate, and
-  print a full classification report. Metrics are documented after training.
+
+### Evaluation (held-out test split, 2,000 samples)
+
+| Metric | Score |
+| :--- | :--- |
+| Accuracy | **0.900** |
+| Weighted F1 | **0.902** |
+| Macro F1 | **0.867** |
+
+| Emotion | Precision | Recall | F1 |
+| :--- | :--- | :--- | :--- |
+| sadness | 0.957 | 0.923 | 0.940 |
+| joy | 0.947 | 0.892 | 0.919 |
+| love | 0.709 | 0.887 | 0.788 |
+| anger | 0.880 | 0.909 | 0.894 |
+| fear | 0.898 | 0.862 | 0.879 |
+| surprise | 0.690 | 0.909 | 0.784 |
+
+### Reproduce the model
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python ml/train.py          # downloads data → trains → evaluates → saves model/ + metrics.json
+```
 
 ## 🏗️ Architecture
 
@@ -88,32 +103,188 @@ This is the heart of the project — a genuine, reproducible ML pipeline.
 
 ```
 .
-├── ml/
-│   └── train.py            # ML training pipeline (download → train → evaluate → save)
+├── ml/train.py            # ML training pipeline (download → train → evaluate → save)
 ├── app/
-│   ├── main.py             # FastAPI app: /predict, /reflect, /entries
-│   └── static/             # Frontend single-page app (Sign-In, journal, dashboard)
-├── model/                  # Trained model artifact (produced by ml/train.py)
-├── firestore.rules         # User-isolated Firestore security rules
-├── Dockerfile              # Single-container build for Cloud Run
+│   ├── main.py            # FastAPI app + routes
+│   ├── config.py          # Settings + Secret Manager key retrieval
+│   ├── emotion_model.py   # Loads & serves the trained model
+│   ├── gemini_service.py  # Gemini client + fallback ladder + local fallback
+│   ├── auth.py            # Firebase Admin JWT verification
+│   ├── firestore_service.py # User-isolated Firestore reads/writes
+│   └── static/index.html  # Single-page frontend (Sign-In, journal, dashboard)
+├── model/                 # Trained artifact + metrics.json (produced by ml/train.py)
+├── firestore.rules        # User-isolated Firestore security rules
+├── Dockerfile             # Single-container build for Cloud Run
 ├── requirements.txt
 └── README.md
 ```
 
-## 🚀 Status & roadmap
+## 🔌 API reference
 
-- [x] Project scaffold + public repository
-- [ ] ML training pipeline (`dair-ai/emotion`, TF-IDF + Logistic Regression)
-- [ ] Train model + record evaluation metrics
-- [ ] FastAPI backend (`/predict`, `/reflect`, `/entries`)
-- [ ] Frontend SPA (Google Sign-In, journal input, mood dashboard)
-- [ ] Firestore security rules
-- [ ] Dockerfile + local container run
-- [ ] Full production deployment guide (GCP setup, Secret Manager, `gcloud run deploy`)
+| Method | Path | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| GET | `/health` | — | Liveness + model metadata |
+| POST | `/predict` | — | `{ "text": "..." }` → emotion + confidence + score distribution |
+| POST | `/reflect` | — | `{ "text": "...", "emotion": "..." }` → Gemini reflection (or local fallback) |
+| POST | `/entries` | ✅ Bearer | Save an entry to the user's private collection |
+| GET | `/entries` | ✅ Bearer | List the authenticated user's entries |
+| GET | `/` | — | Frontend SPA |
 
-Full setup and deploy instructions — enabling Google Cloud APIs, provisioning Firestore,
-creating the Secret Manager secret, deploying to Cloud Run, and applying the required
-challenge label — will be documented here as each piece lands.
+---
+
+# 🚀 Deploy to Google Cloud Run
+
+> **Cost:** New Google Cloud accounts get **$300 in free credits**. Cloud Run, Firestore, and
+> the Gemini API all have generous free tiers — a demo like this typically costs **$0**.
+
+### 0. Prerequisites
+
+- A Google Cloud project with **billing enabled**.
+- [`gcloud` CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated
+  (`gcloud auth login`), or use Cloud Shell.
+- A **Gemini API key** from [Google AI Studio](https://aistudio.google.com/app/apikey).
+
+```bash
+export PROJECT_ID="your-project-id"
+export REGION="us-central1"
+export SERVICE_NAME="mindmap-journal"
+gcloud config set project "$PROJECT_ID"
+```
+
+### 1. Enable the required APIs
+
+```bash
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  secretmanager.googleapis.com \
+  firestore.googleapis.com \
+  artifactregistry.googleapis.com
+```
+
+### 2. Provision Cloud Firestore + deploy security rules
+
+Create a Firestore database in **Native mode** (once per project):
+
+```bash
+gcloud firestore databases create --location="$REGION"
+```
+
+Deploy the user-isolation rules in [`firestore.rules`](./firestore.rules) using the Firebase
+CLI (`npm i -g firebase-tools`, then `firebase login`):
+
+```bash
+firebase deploy --only firestore:rules --project "$PROJECT_ID"
+```
+
+The rules enforce that a user can only read/write `users/{uid}/entries/*` where
+`request.auth.uid == uid`, with an explicit deny-all fallback.
+
+### 3. Store the Gemini API key in Secret Manager
+
+```bash
+# Create the secret and add your key as a version
+gcloud secrets create GEMINI_API_KEY --replication-policy="automatic"
+echo -n "YOUR_GEMINI_API_KEY" | gcloud secrets versions add GEMINI_API_KEY --data-file=-
+
+# Grant the Cloud Run runtime service account read access
+export PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+gcloud secrets add-iam-policy-binding GEMINI_API_KEY \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+The runtime service account also needs Firestore access (usually granted by default; if not):
+
+```bash
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/datastore.user"
+```
+
+### 4. Configure Firebase Authentication (Google Sign-In)
+
+1. In the [Firebase console](https://console.firebase.google.com), add your GCP project.
+2. **Build → Authentication → Sign-in method →** enable **Google**.
+3. **Project settings → Your apps → Web app** → copy the web config.
+4. Paste the values into the `firebaseConfig` object in
+   [`app/static/index.html`](./app/static/index.html) (these are **client-side, non-secret**
+   identifiers):
+
+   ```js
+   const firebaseConfig = {
+     apiKey: "…",
+     authDomain: "your-project.firebaseapp.com",
+     projectId: "your-project-id",
+     appId: "…"
+   };
+   ```
+5. After you know your Cloud Run URL (step 5), add its domain under
+   **Authentication → Settings → Authorized domains**.
+
+### 5. Deploy to Cloud Run
+
+Deploy straight from source (Cloud Build containerizes using the included `Dockerfile`):
+
+```bash
+gcloud run deploy "$SERVICE_NAME" \
+  --source . \
+  --region "$REGION" \
+  --allow-unauthenticated \
+  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest" \
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+```
+
+`--allow-unauthenticated` lets users reach the sign-in page; **application** auth is enforced
+per request via Firebase JWT verification on `/entries`.
+
+### 6. Apply the mandatory challenge label
+
+```bash
+gcloud run services update "$SERVICE_NAME" \
+  --update-labels=dev-tutorial=cloud-run-ai-challenge \
+  --region="$REGION"
+```
+
+### 7. Done
+
+```bash
+gcloud run services describe "$SERVICE_NAME" --region "$REGION" --format='value(status.url)'
+```
+
+Open the URL, sign in with Google, write an entry, and watch the emotion tag, Gemini
+reflection, and mood chart update live.
+
+---
+
+## 🧪 Run locally
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python ml/train.py                       # produces model/emotion_model.joblib (or use the committed one)
+uvicorn app.main:app --reload --port 8080
+```
+
+- `/predict` and `/reflect` work without any cloud setup. Without a `GEMINI_API_KEY` env var,
+  `/reflect` returns a graceful **local fallback** reflection.
+- `/entries` requires Firebase credentials (set `GOOGLE_APPLICATION_CREDENTIALS`).
+
+Or with Docker:
+
+```bash
+docker build -t mindmap-journal .
+docker run -p 8080:8080 -e GEMINI_API_KEY="your-key" mindmap-journal
+```
+
+## 🛡️ Security notes
+
+- **No hardcoded secrets.** The Gemini key is read from Secret Manager (prod) or an env var
+  (local). The Firebase web config in the frontend is public by design and not a secret.
+- **User isolation** is enforced in two places: Firestore security rules *and* backend JWT
+  verification of the `uid` on every `/entries` call.
+- **Untrusted input** (journal text) is length-validated, HTML-escaped before rendering, and
+  passed to Gemini strictly as data, never as instructions.
 
 ---
 
