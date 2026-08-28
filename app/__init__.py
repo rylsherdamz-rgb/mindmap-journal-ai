@@ -1,0 +1,1 @@
+"""MindMap Journal application package."""
