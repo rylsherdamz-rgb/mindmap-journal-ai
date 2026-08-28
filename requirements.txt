@@ -10,6 +10,10 @@ joblib==1.4.2
 numpy==2.2.1
 scipy==1.15.0
 
+# --- Dataset loading for training (ml/train.py) ---
+pandas==2.2.3
+pyarrow==18.1.0
+
 # --- Google Cloud / Firebase / Gemini ---
 google-cloud-secret-manager==2.22.0
 firebase-admin==6.6.0

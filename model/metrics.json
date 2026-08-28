@@ -1,0 +1,69 @@
+{
+  "dataset": "dair-ai/emotion",
+  "model": "TfidfVectorizer(1-2gram) + LogisticRegression(balanced)",
+  "train_size": 18000,
+  "test_size": 2000,
+  "train_seconds": 19.13,
+  "accuracy": 0.9,
+  "macro_f1": 0.8673,
+  "weighted_f1": 0.9021,
+  "labels": {
+    "0": "sadness",
+    "1": "joy",
+    "2": "love",
+    "3": "anger",
+    "4": "fear",
+    "5": "surprise"
+  },
+  "classification_report": {
+    "sadness": {
+      "precision": 0.9571428571428572,
+      "recall": 0.9225473321858864,
+      "f1-score": 0.9395267309377738,
+      "support": 581.0
+    },
+    "joy": {
+      "precision": 0.9465648854961832,
+      "recall": 0.8920863309352518,
+      "f1-score": 0.9185185185185185,
+      "support": 695.0
+    },
+    "love": {
+      "precision": 0.7085427135678392,
+      "recall": 0.8867924528301887,
+      "f1-score": 0.7877094972067039,
+      "support": 159.0
+    },
+    "anger": {
+      "precision": 0.8802816901408451,
+      "recall": 0.9090909090909091,
+      "f1-score": 0.8944543828264758,
+      "support": 275.0
+    },
+    "fear": {
+      "precision": 0.8976744186046511,
+      "recall": 0.8616071428571429,
+      "f1-score": 0.8792710706150342,
+      "support": 224.0
+    },
+    "surprise": {
+      "precision": 0.6896551724137931,
+      "recall": 0.9090909090909091,
+      "f1-score": 0.7843137254901961,
+      "support": 66.0
+    },
+    "accuracy": 0.9,
+    "macro avg": {
+      "precision": 0.8466436228943616,
+      "recall": 0.8968691794983813,
+      "f1-score": 0.867298987599117,
+      "support": 2000.0
+    },
+    "weighted avg": {
+      "precision": 0.9076473314063092,
+      "recall": 0.9,
+      "f1-score": 0.902088796039242,
+      "support": 2000.0
+    }
+  }
+}
